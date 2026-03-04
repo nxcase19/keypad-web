@@ -1,16 +1,12 @@
-# Keypad Web (PWA Offline)
+# Keypad Web v3 (PWA Offline)
 
-## ใช้งาน
-- เปิดเว็บครั้งแรก (มีเน็ต) เพื่อให้ cache ไฟล์ (หลังจากนั้นใช้งาน Offline ได้)
-- iPhone/iPad: Share → Add to Home Screen (แนะนำ)
+## v3 เพิ่มอะไร
+- จำกัดการพิมพ์เลข: 2ตัวพิมพ์ได้แค่ 2 หลัก, 3ตัวพิมพ์ได้แค่ 3 หลัก (กัน paste/พิมพ์เกิน)
+- Export มี Summary ยืนยันก่อนส่ง
+- ปุ่ม “แชร์ (LINE)” (ใช้ Web Share API ถ้าเครื่องรองรับ) ถ้าไม่รองรับจะดาวน์โหลด ZIP ให้แทน
+- Draft Recovery: ถ้ามี Draft ก่อนหน้า จะถามกู้คืน/ล้าง
+- Offline-first (Service Worker)
 
-## Export ส่ง LINE
-- กด Export ZIP
-- ไฟล์จะอยู่ใน Downloads / Files
-- Share → LINE → ส่งให้เครื่อง Owner
-- Owner แตก ZIP แล้ว import JSON
-
-## Deploy แนะนำ (Vercel)
-1) สร้าง repo (GitHub) แล้วอัปโหลดไฟล์ทั้งหมดในโฟลเดอร์นี้
-2) เข้า Vercel → New Project → Import repo → Deploy
-3) เปิดลิงก์บนมือถือ แล้ว Add to Home Screen
+## อัปเดตขึ้น GitHub
+Add file → Upload files → ลากไฟล์ทั้งหมดทับของเดิม → Commit
+Vercel จะ deploy อัตโนมัติ
