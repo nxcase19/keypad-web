@@ -1,123 +1,51 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Keypad Web • ระบบคีย์</title>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0f1115">
-  <link rel="stylesheet" href="./styles.css"/>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Keypad Web</title>
+<link rel="manifest" href="./manifest.json">
+<style>
+body{font-family:sans-serif;background:#0f1115;color:#eee;margin:0;padding:20px}
+.card{background:#171a21;padding:15px;border-radius:10px;margin-bottom:15px}
+input,textarea{width:100%;padding:10px;margin-top:5px;background:#0c0e13;color:#fff;border:1px solid #333;border-radius:6px}
+button{padding:10px 15px;margin-top:10px;border:none;border-radius:6px;background:#2f81f7;color:#fff;cursor:pointer}
+.list{max-height:300px;overflow:auto;margin-top:10px}
+.item{border-bottom:1px solid #333;padding:5px 0}
+</style>
 </head>
 <body>
-  <div class="mobile-tabs">
-    <div class="tabbar">
-      <button id="tabKey" class="tab active">คีย์</button>
-      <button id="tabList" class="tab">รายการ</button>
-    </div>
-  </div>
 
-  <div class="wrap">
-    <header class="top">
-      <div class="title">
-        <div class="h1">Keypad Web</div>
-        <div class="sub">Offline • คีย์ + Draft + Export ZIP (ส่ง LINE ได้)</div>
-      </div>
+<h2>Keypad Web</h2>
 
-      <div class="keyer">
-        <div class="label">Keyer ID (6 หลัก)</div>
-        <div class="row">
-          <input id="keyerIdInput" class="input" maxlength="6" inputmode="numeric" placeholder="000000"/>
-          <button id="btnSetKeyerId" class="btn">ตั้งค่า / เปลี่ยน</button>
-        </div>
-        <div id="keyerHint" class="hint"></div>
-      </div>
-    </header>
+<div class="card">
+Keyer ID (6 หลัก)<br>
+<input id="keyerId"/>
+<button onclick="setKeyer()">ตั้งค่า</button>
+<div id="keyerInfo"></div>
+</div>
 
-    <main class="main">
-      <section id="viewKey" class="card">
-        <h3 class="card-title">คีย์เลข 2 ตัว (รวมเข้ารายการเดิมทันที)</h3>
-        <div class="row">
-          <div class="col">
-            <div class="label">เลข (00-99)</div>
-            <input id="twoNum" class="input" inputmode="numeric" placeholder="เช่น 07" />
-          </div>
-          <div class="col">
-            <div class="label">บน</div>
-            <input id="twoTop" class="input" inputmode="numeric" placeholder="เช่น 500" />
-          </div>
-          <div class="col">
-            <div class="label">ล่าง</div>
-            <input id="twoBottom" class="input" inputmode="numeric" placeholder="เช่น 300" />
-          </div>
-          <div class="col-btn">
-            <button id="btnAdd2D" class="btn primary" style="width:100%">เพิ่ม (Enter)</button>
-          </div>
-        </div>
-        <div class="hint">ช่องว่าง=0 • เลข 7 → 07 • Enter: เลข→บน→ล่าง→เพิ่ม</div>
+<div class="card">
+เลข 2 ตัว<br>
+<input id="twoNum" placeholder="07">
+<input id="twoTop" placeholder="บน">
+<input id="twoBottom" placeholder="ล่าง">
+<button onclick="add2()">เพิ่ม</button>
+</div>
 
-        <div class="divider"></div>
+<div class="card">
+Paste หลายรายการ
+<textarea id="paste"></textarea>
+<button onclick="pasteAdd()">เพิ่มจาก Paste</button>
+</div>
 
-        <h3 class="card-title">คีย์เลข 3 ตัว (รวมเข้ารายการเดิมทันที)</h3>
-        <div class="row">
-          <div class="col">
-            <div class="label">เลข (000-999)</div>
-            <input id="threeNum" class="input" inputmode="numeric" placeholder="เช่น 001" />
-          </div>
-          <div class="col">
-            <div class="label">ตรง</div>
-            <input id="threeStraight" class="input" inputmode="numeric" placeholder="เช่น 100" />
-          </div>
-          <div class="col">
-            <div class="label">โต๊ด</div>
-            <input id="threeTod" class="input" inputmode="numeric" placeholder="เช่น 50" />
-          </div>
-          <div class="col-btn">
-            <button id="btnAdd3D" class="btn primary" style="width:100%">เพิ่ม (Enter)</button>
-          </div>
-        </div>
-        <div class="hint">ต้องกรอกเลขให้ครบ 3 ตัวเท่านั้น (เช่น 001) • ช่องว่าง=0 • Enter: เลข→ตรง→โต๊ด→เพิ่ม</div>
+<div class="card">
+รายการล่าสุด
+<div id="list" class="list"></div>
+<button onclick="clearAll()">ล้าง</button>
+<button onclick="exportZip()">Export ZIP</button>
+</div>
 
-        <div class="divider"></div>
-
-        <h3 class="card-title">Paste หลายรายการ</h3>
-        <div class="hint">
-          2 ตัว: <b>เลข บน ล่าง</b> • 3 ตัว: <b>เลข ตรง โต๊ด</b> (เว้นวรรคคั่น) • ข้ามบรรทัดผิดและแจ้งจำนวน
-        </div>
-        <textarea id="pasteArea" class="textarea" rows="8" placeholder="07 500 300&#10;42 100 0&#10;123 100 50&#10;001 0 200"></textarea>
-        <div class="row right">
-          <button id="btnPasteAdd" class="btn">เพิ่มทั้งหมดจาก Paste</button>
-        </div>
-      </section>
-
-      <section id="viewList" class="card">
-        <h3 class="card-title">รายการล่าสุด (บนสุด)</h3>
-        <div class="stats">
-          <div><span class="k">ทั้งหมด:</span> <span id="statItems">0</span> รายการ</div>
-          <div><span class="k">ยอดรวม:</span> <span id="statTotal">0</span> บาท</div>
-          <div><span class="k">Draft:</span> <span id="statDraft">ยังไม่บันทึก</span></div>
-        </div>
-
-        <div class="list" id="list"></div>
-
-        <div class="row" style="margin-top:12px">
-          <button id="btnClear" class="btn danger">ล้างรายการ</button>
-          <div style="flex:1"></div>
-          <button id="btnExport" class="btn primary">Export ZIP</button>
-        </div>
-
-        <div class="hint" style="margin-top:10px">
-          ส่ง LINE (iPhone/iPad): Export → ไฟล์ไปที่ “Files/ดาวน์โหลด” → Share → LINE
-        </div>
-      </section>
-    </main>
-
-    <footer class="foot">
-      <div id="status" class="status">พร้อมทำงาน</div>
-      <div class="version">web v1.0 • PWA</div>
-    </footer>
-  </div>
-
-  <div id="toast" class="toast hidden"></div>
-  <script src="./app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
