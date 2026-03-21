@@ -186,41 +186,36 @@ function add3D() {
 }
 
 function parsePasteBlock(text) {
+  console.log("[parsePasteBlock] input:", text);
   const lines = String(text || "").split(/\r?\n/);
   let okCount = 0;
   let badCount = 0;
   const toAdd = [];
-
-  function normalizeLine(str) {
-    return str
-      .replace(/[=:：xX×*]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function mergeOcrSplitDigits(str) {
-    let prev = str;
-    let curr = str.replace(/(?<!\d)(\d)(?!\d)\s+(?<!\d)(\d)(?!\d)/g, "$1$2");
-    while (curr !== prev) {
-      prev = curr;
-      curr = prev.replace(/(?<!\d)(\d)(?!\d)\s+(?<!\d)(\d)(?!\d)/g, "$1$2");
-    }
-    return curr;
-  }
-
-  function extractKeywordValue(str, keywordRe) {
-    const m = str.match(keywordRe);
-    return m ? Number(m[1]) : 0;
-  }
+  const reTodKw = /(?:โต๊ด|โต้ด|โตด)\s*(\d+)/;
+  const reHasTod = /(?:โต๊ด|โต้ด|โตด)/;
 
   for (const line of lines) {
     const raw = line.trim();
     if (!raw) continue;
 
-    const normalized = mergeOcrSplitDigits(normalizeLine(raw));
-    const nums = normalized.match(/\d+/g);
+    let s = raw
+      .replace(/[=:：]/g, " ")
+      .replace(/[xX×*]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    if (!nums || nums.length < 1) {
+    let prevS;
+    do {
+      prevS = s;
+      s = prevS.replace(/(?<!\d)(\d)(?!\d)\s+(?<!\d)(\d)(?!\d)/g, "$1$2");
+    } while (s !== prevS);
+
+    const nums = s.match(/\d+/g) || [];
+    console.log("[line raw]:", raw);
+    console.log("[normalized]:", s);
+    console.log("[nums]:", nums);
+
+    if (nums.length < 1) {
       badCount++;
       continue;
     }
@@ -236,7 +231,7 @@ function parsePasteBlock(text) {
     const hasTop = /บน/.test(raw);
     const hasBottom = /ล่าง/.test(raw);
     const hasStraight = /ตรง/.test(raw);
-    const hasTod = /โต[๊้]?ด/.test(raw);
+    const hasTod = reHasTod.test(raw);
 
     // ===== 2D =====
     if (nLen <= 2) {
@@ -250,21 +245,22 @@ function parsePasteBlock(text) {
       let bottom = 0;
 
       if (hasTop || hasBottom) {
-        top = extractKeywordValue(raw, /บน\s*(\d+)/);
-        bottom = extractKeywordValue(raw, /ล่าง\s*(\d+)/);
+        const mt = raw.match(/บน\s*(\d+)/);
+        const mb = raw.match(/ล่าง\s*(\d+)/);
+        if (mt) top = Number(mt[1]);
+        if (mb) bottom = Number(mb[1]);
       } else {
         const top1 = normalizeAmountAllowBlank(nums[1] ?? "");
         const bottom1 = normalizeAmountAllowBlank(nums[2] ?? "");
-
         if (!top1.ok || !bottom1.ok) {
           badCount++;
           continue;
         }
-
         top = top1.value;
         bottom = bottom1.value;
       }
 
+      console.log("[parsed item]:", { type: "2d", num, top, bottom, straight: undefined, tod: undefined });
       toAdd.push({
         id: makeId(),
         type: "2d",
@@ -273,7 +269,6 @@ function parsePasteBlock(text) {
         bottom,
         createdAt: nowIso(),
       });
-
       okCount++;
       continue;
     }
@@ -290,21 +285,22 @@ function parsePasteBlock(text) {
       let tod = 0;
 
       if (hasStraight || hasTod) {
-        straight = extractKeywordValue(raw, /ตรง\s*(\d+)/);
-        tod = extractKeywordValue(raw, /โต[๊้]?ด\s*(\d+)/);
+        const ms = raw.match(/ตรง\s*(\d+)/);
+        const mtod = raw.match(reTodKw);
+        if (ms) straight = Number(ms[1]);
+        if (mtod) tod = Number(mtod[1]);
       } else {
         const st1 = normalizeAmountAllowBlank(nums[1] ?? "");
         const tod1 = normalizeAmountAllowBlank(nums[2] ?? "");
-
         if (!st1.ok || !tod1.ok) {
           badCount++;
           continue;
         }
-
         straight = st1.value;
         tod = tod1.value;
       }
 
+      console.log("[parsed item]:", { type: "3d", num, top: undefined, bottom: undefined, straight, tod });
       toAdd.push({
         id: makeId(),
         type: "3d",
@@ -313,7 +309,6 @@ function parsePasteBlock(text) {
         tod,
         createdAt: nowIso(),
       });
-
       okCount++;
       continue;
     }
@@ -321,6 +316,7 @@ function parsePasteBlock(text) {
     badCount++;
   }
 
+  console.log("[RESULT]", { okCount, badCount, toAdd });
   return { okCount, badCount, toAdd };
 }
 
@@ -421,7 +417,9 @@ function bindEvents() {
     if (!keyerId) return toast("ยังไม่ได้ตั้ง Keyer ID", "กรุณาตั้งค่า Keyer ID ก่อน");
 
     const text = $("pasteArea").value;
+    console.log("[PASTE TEXT]", text);
     const parsed = parsePasteBlock(text);
+    console.log("[PARSED RESULT]", parsed);
     if (parsed.okCount === 0) return toast("ไม่มีรายการถูกต้อง", `ข้าม ${parsed.badCount} รายการ`);
 
     // newest on top: reverse before unshift
