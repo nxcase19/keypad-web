@@ -31,7 +31,7 @@
         <div class="row row-3">
           <div class="col">
             <div class="label">เลข (00-99)</div>
-            <input id="twoNum" class="input big" inputmode="numeric" placeholder="เช่น 07" />
+            <input id="twoNum" class="input big" maxlength="2" inputmode="numeric" pattern="[0-9]*" placeholder="เช่น 07" />
           </div>
           <div class="col">
             <div class="label">บน</div>
@@ -54,7 +54,7 @@
         <div class="row row-3">
           <div class="col">
             <div class="label">เลข (000-999)</div>
-            <input id="threeNum" class="input big" inputmode="numeric" placeholder="เช่น 001" />
+            <input id="threeNum" class="input big" maxlength="3" inputmode="numeric" pattern="[0-9]*" placeholder="เช่น 001" />
           </div>
           <div class="col">
             <div class="label">ตรง</div>
@@ -97,6 +97,7 @@
         <div class="row actions">
           <button id="btnClear" class="btn danger">ล้างรายการ</button>
           <div class="spacer"></div>
+          <button id="btnShareLine" class="btn secondary">แชร์ (LINE)</button>
           <button id="btnExport" class="btn primary">Export Batch JSON</button>
         </div>
       </section>
