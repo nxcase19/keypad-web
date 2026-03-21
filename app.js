@@ -191,26 +191,37 @@ function parsePasteBlock(text) {
   let okCount = 0;
   let badCount = 0;
   const toAdd = [];
-  const reTodKw = /(?:โต๊ด|โต้ด|โตด)\s*(\d+)/;
-  const reHasTod = /(?:โต๊ด|โต้ด|โตด)/;
+  const reTodKw = /(?:โต๊ด|โต้ด|โตด)\s*(\d+)/i;
+  const reHasTod = /(?:โต๊ด|โต้ด|โตด)/i;
 
   for (const line of lines) {
     const raw = line.trim();
     if (!raw) continue;
 
-    let s = raw
-      .replace(/[=:：]/g, " ")
-      .replace(/[xX×*]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
+    let s = raw;
+    s = s.replace(/(\d+)\s*[xX×*|\/.,\-]\s*(\d+)/g, "$1 $2");
+    s = s.replace(/[=:：]/g, " ");
+    s = s.replace(/[xX×*]/g, " ");
     let prevS;
     do {
       prevS = s;
-      s = prevS.replace(/(?<!\d)(\d)(?!\d)\s+(?<!\d)(\d)(?!\d)/g, "$1$2");
+      s = prevS.replace(/\b(\d)\s+(\d)\b/g, "$1$2");
     } while (s !== prevS);
+    s = s.replace(/\s+/g, " ").trim();
 
-    const nums = s.match(/\d+/g) || [];
+    const numsRaw = s.match(/\d+/g) || [];
+    const merged = [];
+    for (let i = 0; i < numsRaw.length; i++) {
+      const cur = numsRaw[i];
+      const next = numsRaw[i + 1];
+      if (cur.length === 1 && next && next.length === 1) {
+        merged.push(cur + next);
+        i++;
+      } else {
+        merged.push(cur);
+      }
+    }
+    let nums = merged;
     console.log("[line raw]:", raw);
     console.log("[normalized]:", s);
     console.log("[nums]:", nums);
@@ -228,9 +239,9 @@ function parsePasteBlock(text) {
       continue;
     }
 
-    const hasTop = /บน/.test(raw);
-    const hasBottom = /ล่าง/.test(raw);
-    const hasStraight = /ตรง/.test(raw);
+    const hasTop = /บน|บ(?=\d)/i.test(raw);
+    const hasBottom = /ล่าง|ล(?=\d)/i.test(raw);
+    const hasStraight = /ตรง/i.test(raw);
     const hasTod = reHasTod.test(raw);
 
     // ===== 2D =====
@@ -245,8 +256,8 @@ function parsePasteBlock(text) {
       let bottom = 0;
 
       if (hasTop || hasBottom) {
-        const mt = raw.match(/บน\s*(\d+)/);
-        const mb = raw.match(/ล่าง\s*(\d+)/);
+        const mt = raw.match(/บน\s*(\d+)/i) || raw.match(/(?:^|\s)บ(\d+)/i);
+        const mb = raw.match(/ล่าง\s*(\d+)/i) || raw.match(/(?:^|\s)ล(\d+)/i);
         if (mt) top = Number(mt[1]);
         if (mb) bottom = Number(mb[1]);
       } else {
@@ -285,7 +296,7 @@ function parsePasteBlock(text) {
       let tod = 0;
 
       if (hasStraight || hasTod) {
-        const ms = raw.match(/ตรง\s*(\d+)/);
+        const ms = raw.match(/ตรง\s*(\d+)/i);
         const mtod = raw.match(reTodKw);
         if (ms) straight = Number(ms[1]);
         if (mtod) tod = Number(mtod[1]);
