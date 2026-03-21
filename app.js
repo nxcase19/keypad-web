@@ -570,21 +570,28 @@ function bindEvents() {
     const exportCount = items.length;
     const exportTotal = items.reduce((s, it) => s + itemTotal(it), 0);
 
-    const lines = items.map((it) => {
-      if (it.type === "2d") {
-        return `${it.number} บน ${it.top} ล่าง ${it.bottom}`;
-      }
-      return `${it.number} ตรง ${it.straight} โต๊ด ${it.tod}`;
-    });
-    const content = lines.join("\n");
-
     let url = null;
     try {
-      const blob = new Blob([content], { type: "text/plain" });
+      if (typeof JSZip === "undefined") {
+        throw new Error("JSZip is not available");
+      }
+
+      const exportData = {
+        keyerId: keyerId || "",
+        exportedAt: new Date().toISOString(),
+        total: items.length,
+        items,
+      };
+
+      const jsonStr = JSON.stringify(exportData, null, 2);
+      const zip = new JSZip();
+      zip.file(`keypad-${keyerId}.json`, jsonStr);
+      const blob = await zip.generateAsync({ type: "blob" });
+
       url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `keypad-${keyerId}.txt`;
+      a.download = `keypad-${keyerId}.zip`;
       a.click();
     } catch (e) {
       console.error(e);
