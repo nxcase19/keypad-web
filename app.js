@@ -118,24 +118,69 @@ function renderList() {
 
 async function saveDraft(reason) {
   if (!keyerId) return;
-  try {
-    const res = await window.api.saveDraft(keyerId, items);
-    if (res?.ok) {
-      lastDraftSavedAt = nowIso();
-      computeStats();
-      if (reason) setStatus(`Draft saved (${reason}) • ${fmtTime(lastDraftSavedAt)}`);
+
+  if (window.api?.saveDraft) {
+    try {
+      const res = await window.api.saveDraft(keyerId, items);
+      if (res?.ok) {
+        lastDraftSavedAt = nowIso();
+        computeStats();
+        if (reason) setStatus(`Draft saved (${reason}) • ${fmtTime(lastDraftSavedAt)}`);
+      }
+    } catch (e) {
+      console.error(e);
     }
-  } catch {}
+    return;
+  }
+
+  try {
+    const t = nowIso();
+    localStorage.setItem(
+      "draft_" + keyerId,
+      JSON.stringify({
+        items,
+        lastSavedAt: t,
+      })
+    );
+    lastDraftSavedAt = t;
+    computeStats();
+    if (reason) setStatus(`Draft saved (${reason}) • ${fmtTime(lastDraftSavedAt)}`);
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 async function loadDraft() {
   if (!keyerId) return;
-  const res = await window.api.loadDraft(keyerId);
-  if (!res?.ok) return toast("โหลด Draft ไม่ได้", res?.error || "");
-  const draft = res.draft || { items: [] };
 
-  items = Array.isArray(draft.items) ? draft.items : [];
-  lastDraftSavedAt = draft.lastSavedAt || "";
+  if (window.api?.loadDraft) {
+    const res = await window.api.loadDraft(keyerId);
+    if (!res?.ok) return toast("โหลด Draft ไม่ได้", res?.error || "");
+    const draft = res.draft || { items: [] };
+
+    items = Array.isArray(draft.items) ? draft.items : [];
+    lastDraftSavedAt = draft.lastSavedAt || "";
+    ensureItemIds();
+    renderList();
+    computeStats();
+    return;
+  }
+
+  try {
+    const raw = localStorage.getItem("draft_" + keyerId);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      items = Array.isArray(parsed.items) ? parsed.items : [];
+      lastDraftSavedAt = parsed.lastSavedAt || "";
+    } else {
+      items = [];
+      lastDraftSavedAt = "";
+    }
+  } catch (e) {
+    console.error(e);
+    items = [];
+    lastDraftSavedAt = "";
+  }
   ensureItemIds();
   renderList();
   computeStats();
@@ -186,7 +231,6 @@ function add3D() {
 }
 
 function parsePasteBlock(text) {
-  console.log("[parsePasteBlock] input:", text);
   const lines = String(text || "").split(/\r?\n/);
   let okCount = 0;
   let badCount = 0;
@@ -199,14 +243,11 @@ function parsePasteBlock(text) {
     if (!raw) continue;
 
     let s = raw;
-    s = s.replace(/(\d+)\s*[xX×*|\/.,\-]\s*(\d+)/g, "$1 $2");
+    // Normalize separators BETWEEN numbers only
+    s = s.replace(/(\d)\s*[xX×*|\/\-.,]\s*(\d)/g, "$1 $2");
+    // Normalize assignment-like separators
     s = s.replace(/[=:：]/g, " ");
-    s = s.replace(/[xX×*]/g, " ");
-    let prevS;
-    do {
-      prevS = s;
-      s = prevS.replace(/\b(\d)\s+(\d)\b/g, "$1$2");
-    } while (s !== prevS);
+    // Collapse spaces
     s = s.replace(/\s+/g, " ").trim();
 
     const numsRaw = s.match(/\d+/g) || [];
@@ -222,9 +263,6 @@ function parsePasteBlock(text) {
       }
     }
     let nums = merged;
-    console.log("[line raw]:", raw);
-    console.log("[normalized]:", s);
-    console.log("[nums]:", nums);
 
     if (nums.length < 1) {
       badCount++;
@@ -255,23 +293,41 @@ function parsePasteBlock(text) {
       let top = 0;
       let bottom = 0;
 
-      if (hasTop || hasBottom) {
-        const mt = raw.match(/บน\s*(\d+)/i) || raw.match(/(?:^|\s)บ(\d+)/i);
-        const mb = raw.match(/ล่าง\s*(\d+)/i) || raw.match(/(?:^|\s)ล(\d+)/i);
-        if (mt) top = Number(mt[1]);
-        if (mb) bottom = Number(mb[1]);
-      } else {
-        const top1 = normalizeAmountAllowBlank(nums[1] ?? "");
-        const bottom1 = normalizeAmountAllowBlank(nums[2] ?? "");
-        if (!top1.ok || !bottom1.ok) {
+      const mt = raw.match(/(?:บน|บ)\s*(\d+)/i);
+      const mb = raw.match(/(?:ล่าง|ล)\s*(\d+)/i);
+
+      if (mt) {
+        const top1 = normalizeAmountAllowBlank(mt[1]);
+        if (!top1.ok) {
           badCount++;
           continue;
         }
         top = top1.value;
+      } else {
+        const top1 = normalizeAmountAllowBlank(nums[1] ?? "");
+        if (!top1.ok) {
+          badCount++;
+          continue;
+        }
+        top = top1.value;
+      }
+
+      if (mb) {
+        const bottom1 = normalizeAmountAllowBlank(mb[1]);
+        if (!bottom1.ok) {
+          badCount++;
+          continue;
+        }
+        bottom = bottom1.value;
+      } else {
+        const bottom1 = normalizeAmountAllowBlank(nums[2] ?? "");
+        if (!bottom1.ok) {
+          badCount++;
+          continue;
+        }
         bottom = bottom1.value;
       }
 
-      console.log("[parsed item]:", { type: "2d", num, top, bottom, straight: undefined, tod: undefined });
       toAdd.push({
         id: makeId(),
         type: "2d",
@@ -295,23 +351,41 @@ function parsePasteBlock(text) {
       let straight = 0;
       let tod = 0;
 
-      if (hasStraight || hasTod) {
-        const ms = raw.match(/ตรง\s*(\d+)/i);
-        const mtod = raw.match(reTodKw);
-        if (ms) straight = Number(ms[1]);
-        if (mtod) tod = Number(mtod[1]);
-      } else {
-        const st1 = normalizeAmountAllowBlank(nums[1] ?? "");
-        const tod1 = normalizeAmountAllowBlank(nums[2] ?? "");
-        if (!st1.ok || !tod1.ok) {
+      const ms = raw.match(/ตรง\s*(\d+)/i);
+      const mtod = raw.match(reTodKw);
+
+      if (ms) {
+        const st1 = normalizeAmountAllowBlank(ms[1]);
+        if (!st1.ok) {
           badCount++;
           continue;
         }
         straight = st1.value;
+      } else {
+        const st1 = normalizeAmountAllowBlank(nums[1] ?? "");
+        if (!st1.ok) {
+          badCount++;
+          continue;
+        }
+        straight = st1.value;
+      }
+
+      if (mtod) {
+        const tod1 = normalizeAmountAllowBlank(mtod[1]);
+        if (!tod1.ok) {
+          badCount++;
+          continue;
+        }
+        tod = tod1.value;
+      } else {
+        const tod1 = normalizeAmountAllowBlank(nums[2] ?? "");
+        if (!tod1.ok) {
+          badCount++;
+          continue;
+        }
         tod = tod1.value;
       }
 
-      console.log("[parsed item]:", { type: "3d", num, top: undefined, bottom: undefined, straight, tod });
       toAdd.push({
         id: makeId(),
         type: "3d",
@@ -327,7 +401,6 @@ function parsePasteBlock(text) {
     badCount++;
   }
 
-  console.log("[RESULT]", { okCount, badCount, toAdd });
   return { okCount, badCount, toAdd };
 }
 
@@ -474,27 +547,74 @@ function bindEvents() {
     if (!items.length) return toast("Export ไม่ได้", "ยังไม่มีรายการ");
 
     setStatus("กำลัง Export...");
-    const res = await window.api.exportBatch({ keyerId, items });
-    if (res?.canceled) return setStatus("ยกเลิก Export");
-    if (!res?.ok) {
-      toast("Export ล้มเหลว", res?.error || "");
+
+    if (window.api?.exportBatch) {
+      const res = await window.api.exportBatch({ keyerId, items });
+      if (res?.canceled) return setStatus("ยกเลิก Export");
+      if (!res?.ok) {
+        toast("Export ล้มเหลว", res?.error || "");
+        return setStatus("Export ล้มเหลว");
+      }
+
+      items = [];
+      lastDraftSavedAt = "";
+      renderList();
+      computeStats();
+      await window.api.clearDraft(keyerId);
+
+      toast("Export สำเร็จ", `items ${res.batchMeta.totalItems} • total ${fmtMoney(res.batchMeta.totalAmount)}`);
+      setStatus("Export สำเร็จ • เคลียร์รายการแล้ว");
+      return;
+    }
+
+    const exportCount = items.length;
+    const exportTotal = items.reduce((s, it) => s + itemTotal(it), 0);
+
+    const lines = items.map((it) => {
+      if (it.type === "2d") {
+        return `${it.number} บน ${it.top} ล่าง ${it.bottom}`;
+      }
+      return `${it.number} ตรง ${it.straight} โต๊ด ${it.tod}`;
+    });
+    const content = lines.join("\n");
+
+    let url = null;
+    try {
+      const blob = new Blob([content], { type: "text/plain" });
+      url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `keypad-${keyerId}.txt`;
+      a.click();
+    } catch (e) {
+      console.error(e);
+      toast("Export ล้มเหลว", "");
       return setStatus("Export ล้มเหลว");
+    } finally {
+      if (url) URL.revokeObjectURL(url);
     }
 
     items = [];
     lastDraftSavedAt = "";
     renderList();
     computeStats();
-    await window.api.clearDraft(keyerId);
 
-    toast("Export สำเร็จ", `items ${res.batchMeta.totalItems} • total ${fmtMoney(res.batchMeta.totalAmount)}`);
+    try {
+      localStorage.removeItem("draft_" + keyerId);
+    } catch {}
+
+    toast("Export สำเร็จ", `items ${exportCount} • total ${fmtMoney(exportTotal)}`);
     setStatus("Export สำเร็จ • เคลียร์รายการแล้ว");
   });
 
   setInterval(() => saveDraft("auto"), DRAFT_INTERVAL_MS);
 
   window.addEventListener("beforeunload", () => {
-    try { window.api.saveDraft(keyerId, items); } catch {}
+    try {
+      if (window.api?.saveDraft) window.api.saveDraft(keyerId, items);
+    } catch (e) {
+      console.error(e);
+    }
   });
 }
 
