@@ -325,13 +325,44 @@ function parsePasteBlock(text) {
 }
 
 async function initKeyer() {
-  const cfgRes = await window.api.getConfig();
-  if (cfgRes?.ok && cfgRes.config?.keyerId) {
-    keyerId = String(cfgRes.config.keyerId).trim();
-    $("keyerIdInput").value = keyerId;
-    $("keyerHint").textContent = `ปัจจุบัน: ${keyerId} (เปลี่ยนได้)`;
-    await loadDraft();
-  } else {
+  try {
+    let candidate = "";
+
+    if (window.api?.getConfig) {
+      try {
+        const cfgRes = await window.api.getConfig();
+        if (cfgRes?.ok && cfgRes.config?.keyerId) {
+          candidate = String(cfgRes.config.keyerId).trim();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    if (!candidate) {
+      try {
+        const ls = localStorage.getItem("keyerId");
+        if (ls) candidate = String(ls).trim();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const v1 = validateKeyerId(candidate);
+    if (v1.ok) {
+      keyerId = v1.value;
+      $("keyerIdInput").value = keyerId;
+      $("keyerHint").textContent = `ปัจจุบัน: ${keyerId} (เปลี่ยนได้)`;
+      try {
+        await loadDraft();
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      $("keyerHint").textContent = "ยังไม่ได้ตั้งค่า • ต้องตั้ง Keyer ID ก่อนเริ่มคีย์";
+    }
+  } catch (e) {
+    console.error(e);
     $("keyerHint").textContent = "ยังไม่ได้ตั้งค่า • ต้องตั้ง Keyer ID ก่อนเริ่มคีย์";
   }
 }
@@ -342,8 +373,29 @@ function bindEvents() {
     const v1 = validateKeyerId(v);
     if (!v1.ok) return toast("ตั้งค่าไม่ได้", v1.error);
 
-    const res = await window.api.setKeyerId(v1.value);
-    if (!res?.ok) return toast("ตั้งค่าไม่ได้", res?.error || "");
+    let persisted = false;
+    let apiError = "";
+
+    if (window.api?.setKeyerId) {
+      try {
+        const res = await window.api.setKeyerId(v1.value);
+        if (res?.ok === true) persisted = true;
+        else apiError = res?.error || "";
+      } catch (e) {
+        console.error(e);
+        apiError = e?.message || "";
+      }
+    }
+
+    if (!persisted) {
+      try {
+        localStorage.setItem("keyerId", v1.value);
+        persisted = true;
+      } catch (e) {
+        console.error(e);
+        return toast("ตั้งค่าไม่ได้", apiError || e?.message || "บันทึกไม่ได้");
+      }
+    }
 
     keyerId = v1.value;
     $("keyerHint").textContent = `ปัจจุบัน: ${keyerId} (เปลี่ยนได้)`;
