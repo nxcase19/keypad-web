@@ -3,30 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Keypad Web • ระบบคีย์</title>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0f1115">
+  <title>Keypad App • ระบบคีย์</title>
   <link rel="stylesheet" href="./styles.css"/>
 </head>
 <body>
-  <div class="mobile-tabs">
-    <div class="tabbar">
-      <button id="tabKey" class="tab active">คีย์</button>
-      <button id="tabList" class="tab">รายการ</button>
-    </div>
-  </div>
-
   <div class="wrap">
     <header class="top">
       <div class="title">
-        <div class="h1">Keypad Web</div>
-        <div class="sub">Offline • คีย์ + Draft + Export ZIP (ส่ง LINE ได้)</div>
+        <div class="h1">Keypad App</div>
+        <div class="sub">Offline • คีย์ + Draft + Export JSON</div>
       </div>
 
       <div class="keyer">
         <div class="label">Keyer ID (6 หลัก)</div>
         <div class="row">
-          <input id="keyerIdInput" class="input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000"/>
+          <input id="keyerIdInput" class="input" maxlength="6" inputmode="numeric" placeholder="000000"/>
           <button id="btnSetKeyerId" class="btn">ตั้งค่า / เปลี่ยน</button>
         </div>
         <div id="keyerHint" class="hint"></div>
@@ -34,52 +25,56 @@
     </header>
 
     <main class="main">
-      <section id="viewKey" class="card">
-        <h3 class="card-title">คีย์เลข 2 ตัว (รวมเข้ารายการเดิมทันที)</h3>
-        <div class="row">
+      <!-- LEFT -->
+      <section class="card">
+        <div class="card-title">คีย์เลข 2 ตัว (รวมเข้ารายการเดิมทันที)</div>
+        <div class="row row-3">
           <div class="col">
             <div class="label">เลข (00-99)</div>
-            <input id="twoNum" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="เช่น 07" />
+            <input id="twoNum" class="input big" inputmode="numeric" placeholder="เช่น 07" />
           </div>
           <div class="col">
             <div class="label">บน</div>
-            <input id="twoTop" class="input" inputmode="numeric" pattern="[0-9]*" placeholder="เช่น 500" />
+            <input id="twoTop" class="input big" inputmode="numeric" placeholder="เช่น 500" />
           </div>
           <div class="col">
             <div class="label">ล่าง</div>
-            <input id="twoBottom" class="input" inputmode="numeric" pattern="[0-9]*" placeholder="เช่น 300" />
+            <input id="twoBottom" class="input big" inputmode="numeric" placeholder="เช่น 300" />
           </div>
-          <div class="col-btn">
-            <button id="btnAdd2D" class="btn primary" style="width:100%">เพิ่ม (Enter)</button>
+          <div class="col col-btn">
+            <div class="label">&nbsp;</div>
+            <button id="btnAdd2D" class="btn primary">เพิ่ม (Enter)</button>
           </div>
         </div>
-        <div class="hint">ช่องว่าง=0 • เลข 7 → 07 • Enter: เลข→บน→ล่าง→เพิ่ม</div>
+        <div class="hint">ช่องว่าง=0 • เลข 7 → 07</div>
 
         <div class="divider"></div>
 
-        <h3 class="card-title">คีย์เลข 3 ตัว (รวมเข้ารายการเดิมทันที)</h3>
-        <div class="row">
+        <div class="card-title">คีย์เลข 3 ตัว (รวมเข้ารายการเดิมทันที)</div>
+        <div class="row row-3">
           <div class="col">
             <div class="label">เลข (000-999)</div>
-            <input id="threeNum" class="input" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="เช่น 001" />
+            <input id="threeNum" class="input big" inputmode="numeric" placeholder="เช่น 001" />
           </div>
           <div class="col">
             <div class="label">ตรง</div>
-            <input id="threeStraight" class="input" inputmode="numeric" pattern="[0-9]*" placeholder="เช่น 100" />
+            <input id="threeStraight" class="input big" inputmode="numeric" placeholder="เช่น 100" />
           </div>
           <div class="col">
             <div class="label">โต๊ด</div>
-            <input id="threeTod" class="input" inputmode="numeric" pattern="[0-9]*" placeholder="เช่น 50" />
+            <input id="threeTod" class="input big" inputmode="numeric" placeholder="เช่น 50" />
           </div>
-          <div class="col-btn">
-            <button id="btnAdd3D" class="btn primary" style="width:100%">เพิ่ม (Enter)</button>
+          <div class="col col-btn">
+            <div class="label">&nbsp;</div>
+            <button id="btnAdd3D" class="btn primary">เพิ่ม (Enter)</button>
           </div>
         </div>
-        <div class="hint">ต้องกรอกเลขให้ครบ 3 ตัวเท่านั้น (เช่น 001) • ช่องว่าง=0 • Enter: เลข→ตรง→โต๊ด→เพิ่ม</div>
+        <div class="hint">ต้องกรอกเลขให้ครบ 3 ตัวเท่านั้น (เช่น 001) • ช่องว่าง=0</div>
+      </section>
 
-        <div class="divider"></div>
-
-        <h3 class="card-title">Paste หลายรายการ</h3>
+      <!-- RIGHT -->
+      <section class="card">
+        <div class="card-title">Paste หลายรายการ</div>
         <div class="hint">
           2 ตัว: <b>เลข บน ล่าง</b> • 3 ตัว: <b>เลข ตรง โต๊ด</b> (เว้นวรรคคั่น) • ข้ามบรรทัดผิดและแจ้งจำนวน
         </div>
@@ -87,10 +82,10 @@
         <div class="row right">
           <button id="btnPasteAdd" class="btn">เพิ่มทั้งหมดจาก Paste</button>
         </div>
-      </section>
 
-      <section id="viewList" class="card">
-        <h3 class="card-title">รายการล่าสุด (บนสุด)</h3>
+        <div class="divider"></div>
+
+        <div class="card-title">รายการล่าสุด (บนสุด)</div>
         <div class="stats">
           <div><span class="k">ทั้งหมด:</span> <span id="statItems">0</span> รายการ</div>
           <div><span class="k">ยอดรวม:</span> <span id="statTotal">0</span> บาท</div>
@@ -99,26 +94,22 @@
 
         <div class="list" id="list"></div>
 
-        <div class="row" style="margin-top:12px">
+        <div class="row actions">
           <button id="btnClear" class="btn danger">ล้างรายการ</button>
-          <div style="flex:1"></div>
-          <button id="btnShare" class="btn">แชร์ (LINE)</button>
-          <button id="btnExport" class="btn primary">Export ZIP</button>
-        </div>
-
-        <div class="hint" style="margin-top:10px">
-          iPhone/iPad: ถ้าแชร์อัตโนมัติไม่ขึ้น → Export → ไปที่ “Files/ดาวน์โหลด” → Share → LINE
+          <div class="spacer"></div>
+          <button id="btnExport" class="btn primary">Export Batch JSON</button>
         </div>
       </section>
     </main>
 
     <footer class="foot">
       <div id="status" class="status">พร้อมทำงาน</div>
-      <div class="version">web v3.0 • PWA</div>
+      <div class="version">v1.2 • npm start</div>
     </footer>
   </div>
 
   <div id="toast" class="toast hidden"></div>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
