@@ -191,13 +191,36 @@ function parsePasteBlock(text) {
   let badCount = 0;
   const toAdd = [];
 
+  function normalizeLine(str) {
+    return str
+      .replace(/[=:：xX×*]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function mergeOcrSplitDigits(str) {
+    let prev = str;
+    let curr = str.replace(/(?<!\d)(\d)(?!\d)\s+(?<!\d)(\d)(?!\d)/g, "$1$2");
+    while (curr !== prev) {
+      prev = curr;
+      curr = prev.replace(/(?<!\d)(\d)(?!\d)\s+(?<!\d)(\d)(?!\d)/g, "$1$2");
+    }
+    return curr;
+  }
+
+  function extractKeywordValue(str, keywordRe) {
+    const m = str.match(keywordRe);
+    return m ? Number(m[1]) : 0;
+  }
+
   for (const line of lines) {
-    const s = line.trim();
-    if (!s) continue;
+    const raw = line.trim();
+    if (!raw) continue;
 
-    const nums = s.match(/\d+/g);
+    const normalized = mergeOcrSplitDigits(normalizeLine(raw));
+    const nums = normalized.match(/\d+/g);
 
-    if (!nums || nums.length < 1 || nums.length > 3) {
+    if (!nums || nums.length < 1) {
       badCount++;
       continue;
     }
@@ -210,10 +233,10 @@ function parsePasteBlock(text) {
       continue;
     }
 
-    const hasTop = /บน/.test(s);
-    const hasBottom = /ล่าง/.test(s);
-    const hasStraight = /ตรง/.test(s);
-    const hasTod = /โต๊ด/.test(s);
+    const hasTop = /บน/.test(raw);
+    const hasBottom = /ล่าง/.test(raw);
+    const hasStraight = /ตรง/.test(raw);
+    const hasTod = /โต[๊้]?ด/.test(raw);
 
     // ===== 2D =====
     if (nLen <= 2) {
@@ -227,11 +250,8 @@ function parsePasteBlock(text) {
       let bottom = 0;
 
       if (hasTop || hasBottom) {
-        const matchTop = s.match(/บน\s*(\d+)/);
-        const matchBottom = s.match(/ล่าง\s*(\d+)/);
-
-        if (matchTop) top = Number(matchTop[1]);
-        if (matchBottom) bottom = Number(matchBottom[1]);
+        top = extractKeywordValue(raw, /บน\s*(\d+)/);
+        bottom = extractKeywordValue(raw, /ล่าง\s*(\d+)/);
       } else {
         const top1 = normalizeAmountAllowBlank(nums[1] ?? "");
         const bottom1 = normalizeAmountAllowBlank(nums[2] ?? "");
@@ -261,7 +281,7 @@ function parsePasteBlock(text) {
     // ===== 3D =====
     if (nLen === 3) {
       const num = padNumber(first, 3);
-      if (!num) {
+      if (!num || num.length !== 3) {
         badCount++;
         continue;
       }
@@ -270,11 +290,8 @@ function parsePasteBlock(text) {
       let tod = 0;
 
       if (hasStraight || hasTod) {
-        const matchStraight = s.match(/ตรง\s*(\d+)/);
-        const matchTod = s.match(/โต๊ด\s*(\d+)/);
-
-        if (matchStraight) straight = Number(matchStraight[1]);
-        if (matchTod) tod = Number(matchTod[1]);
+        straight = extractKeywordValue(raw, /ตรง\s*(\d+)/);
+        tod = extractKeywordValue(raw, /โต[๊้]?ด\s*(\d+)/);
       } else {
         const st1 = normalizeAmountAllowBlank(nums[1] ?? "");
         const tod1 = normalizeAmountAllowBlank(nums[2] ?? "");
