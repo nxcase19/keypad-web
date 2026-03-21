@@ -1,6 +1,76 @@
-const CACHE_NAME = "keypad-web-v3";
-const ASSETS = ["./","./index.html","./styles.css","./app.js","./manifest.json","./sw.js","./assets/icon-192.png","./assets/icon-512.png"];
-self.addEventListener("install",(e)=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
-self.addEventListener("activate",(e)=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>k!==CACHE_NAME?caches.delete(k):Promise.resolve()))).then(()=>self.clients.claim()))});
-self.addEventListener("fetch",(e)=>{const req=e.request;e.respondWith(caches.match(req).then(cached=>cached||fetch(req).then(res=>{if(req.method==="GET"&&res.status===200){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(req,copy)).catch(()=>{})}return res}).catch(()=>cached)))});
+/* Bump CACHE_VERSION on every production deploy. */
+const CACHE_VERSION = "1";
+const CACHE_NAME = `keypad-app-v${CACHE_VERSION}`;
 
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      );
+      await self.clients.claim();
+    })()
+  );
+});
+
+function isNavigationRequest(request) {
+  return (
+    request.mode === "navigate" ||
+    (request.method === "GET" &&
+      request.headers.get("accept")?.includes("text/html"))
+  );
+}
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const res = await fetch(request);
+    if (res && res.ok) {
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return Response.error();
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+
+  const networkPromise = fetch(request)
+    .then((res) => {
+      if (res && res.ok) {
+        cache.put(request, res.clone());
+      }
+      return res;
+    })
+    .catch(() => undefined);
+
+  if (cached) {
+    networkPromise;
+    return cached;
+  }
+
+  const network = await networkPromise;
+  return network || Response.error();
+}
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+
+  if (isNavigationRequest(request)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  event.respondWith(staleWhileRevalidate(request));
+});
