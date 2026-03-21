@@ -630,14 +630,26 @@ function bindEvents() {
       };
 
       const jsonStr = JSON.stringify(exportData, null, 2);
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const ts =
+        now.getFullYear().toString() +
+        pad(now.getMonth() + 1) +
+        pad(now.getDate()) +
+        "-" +
+        pad(now.getHours()) +
+        pad(now.getMinutes()) +
+        pad(now.getSeconds());
+
       const zip = new JSZip();
-      zip.file(`keypad-${keyerId}.json`, jsonStr);
+      zip.file(`keypad-${keyerId}-${ts}.json`, jsonStr);
       const blob = await zip.generateAsync({ type: "blob" });
 
       url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `keypad-${keyerId}.zip`;
+      a.download = `keypad-${keyerId}-${ts}.zip`;
       a.click();
     } catch (e) {
       console.error(e);
