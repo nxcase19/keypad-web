@@ -487,15 +487,61 @@ function bindEvents() {
   $("btnAdd2D").addEventListener("click", add2D);
   $("btnAdd3D").addEventListener("click", add3D);
 
-  // Enter flow 2ตัว: เลข -> บน -> ล่าง -> เพิ่ม
-  $("twoNum").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("twoTop").focus(); } });
+  // Enter flow 2ตัว: เลข -> บน -> ล่าง -> เพิ่ม (+ digit limit on twoNum)
+  $("twoNum").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      $("twoTop").focus();
+      return;
+    }
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"];
+    if (allowed.includes(e.key)) return;
+
+    if (
+      !/\d/.test(e.key) ||
+      (e.target.value.length >= 2 &&
+        e.target.selectionStart === e.target.selectionEnd)
+    ) {
+      e.preventDefault();
+    }
+  });
   $("twoTop").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("twoBottom").focus(); } });
   $("twoBottom").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add2D(); } });
 
-  // Enter flow 3ตัว: เลข -> ตรง -> โต๊ด -> เพิ่ม
-  $("threeNum").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("threeStraight").focus(); } });
+  $("twoNum").addEventListener("input", (e) => {
+    let v = e.target.value;
+    v = v.replace(/\D/g, "");
+    if (v.length > 2) v = v.slice(0, 2);
+    e.target.value = v;
+  });
+
+  // Enter flow 3ตัว: เลข -> ตรง -> โต๊ด -> เพิ่ม (+ digit limit on threeNum)
+  $("threeNum").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      $("threeStraight").focus();
+      return;
+    }
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"];
+    if (allowed.includes(e.key)) return;
+
+    if (
+      !/\d/.test(e.key) ||
+      (e.target.value.length >= 3 &&
+        e.target.selectionStart === e.target.selectionEnd)
+    ) {
+      e.preventDefault();
+    }
+  });
   $("threeStraight").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("threeTod").focus(); } });
   $("threeTod").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add3D(); } });
+
+  $("threeNum").addEventListener("input", (e) => {
+    let v = e.target.value;
+    v = v.replace(/\D/g, "");
+    if (v.length > 3) v = v.slice(0, 3);
+    e.target.value = v;
+  });
 
   $("btnPasteAdd").addEventListener("click", () => {
     if (!keyerId) return toast("ยังไม่ได้ตั้ง Keyer ID", "กรุณาตั้งค่า Keyer ID ก่อน");
@@ -612,6 +658,41 @@ function bindEvents() {
 
     toast("Export สำเร็จ", `items ${exportCount} • total ${fmtMoney(exportTotal)}`);
     setStatus("Export สำเร็จ • เคลียร์รายการแล้ว");
+  });
+
+  $("btnShareLine").addEventListener("click", () => {
+    if (!items.length) {
+      setStatus("ไม่มีรายการให้แชร์");
+      return;
+    }
+
+    try {
+      const lines = items.map((it) => {
+        if (it.type === "2d") {
+          return `${it.number} บน ${it.top} ล่าง ${it.bottom}`;
+        }
+        return `${it.number} ตรง ${it.straight} โต๊ด ${it.tod}`;
+      });
+
+      const total = items.reduce((sum, it) => sum + itemTotal(it), 0);
+
+      const message =
+        `📌 Keyer ${keyerId}\n` +
+        `🧾 ${items.length} รายการ\n` +
+        `💰 รวม ${fmtMoney(total)}\n\n` +
+        lines.join("\n");
+
+      let messageStr = String(message);
+      if (messageStr.length > 1000) {
+        messageStr = messageStr.slice(0, 1000) + "\n...";
+      }
+
+      const text = encodeURIComponent(messageStr);
+      window.open(`https://line.me/R/msg/text/?${text}`, "_blank");
+    } catch (e) {
+      console.error(e);
+      setStatus("แชร์ LINE ไม่สำเร็จ");
+    }
   });
 
   setInterval(() => saveDraft("auto"), DRAFT_INTERVAL_MS);
